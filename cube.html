@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cube Timer — Jacob Morsch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --surface: #f8fafc;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #4f46e5;
+      --accent-light: #eef2ff;
+      --accent-dark: #3730a3;
+      --green: #16a34a;
+      --red: #dc2626;
+      --sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    }
+
+    html { scroll-behavior: auto; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      height: 62px;
+    }
+
+    .nav-logo {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+    .nav-logo span { color: var(--accent); }
+
+    .nav-links {
+      display: flex;
+      list-style: none;
+      margin-left: auto;
+      gap: 0.25rem;
+    }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-links a:hover {
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    /* ── Main ── */
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 4rem;
+    }
+
+    .section-tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 0.2rem 0.65rem;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    /* ── Scramble ── */
+    .scramble-section { text-align: center; margin-bottom: 1.5rem; }
+
+    .scramble-text {
+      font-family: var(--mono);
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--text);
+      padding: 1rem 1.5rem;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      min-height: 3.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.7;
+      word-spacing: 0.15em;
+      flex-wrap: wrap;
+    }
+
+    .scramble-text.loading { color: var(--muted); font-style: italic; }
+
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1.25rem;
+      font-family: var(--sans);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:hover { background: var(--accent-dark); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 1.25rem;
+      font-family: var(--sans);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+    /* ── Cube Visualization ── */
+    .cube-section {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .cube-container {
+      width: 350px;
+      height: 265px;
+    }
+
+    .cube-container twisty-player {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Timer ── */
+    .timer-section {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      padding: 1.5rem 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .timer-display {
+      font-family: var(--mono);
+      font-size: clamp(4rem, 15vw, 8rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      transition: color 0.1s;
+      cursor: pointer;
+    }
+
+    .timer-display.ready { color: var(--green); }
+    .timer-display.holding { color: var(--red); }
+
+    .timer-hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    .timer-hint kbd {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.15rem 0.45rem;
+    }
+
+    /* ── Save Form ── */
+    .save-section {
+      display: none;
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .save-section.visible { display: block; }
+
+    .save-time-display {
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .save-row {
+      display: flex;
+      gap: 0.6rem;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .save-input {
+      padding: 0.55rem 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      width: 180px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .save-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .save-input::placeholder { color: var(--muted); opacity: 0.6; }
+
+    /* ── Leaderboard ── */
+    .leaderboard-section { margin-top: 2.5rem; }
+
+    .leaderboard-section h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+    }
+
+    .leaderboard-empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 2rem;
+      font-size: 0.9rem;
+    }
+
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .leaderboard-table thead th {
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .leaderboard-table tbody td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .leaderboard-table tbody tr:hover { background: var(--surface); }
+
+    .lb-rank {
+      font-weight: 700;
+      color: var(--accent);
+      width: 40px;
+    }
+
+    .lb-time {
+      font-family: var(--mono);
+      font-weight: 600;
+    }
+
+    .lb-scramble {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .lb-date {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .lb-delete {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .lb-delete:hover { color: var(--red); background: #fef2f2; }
+
+    .leaderboard-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 1rem;
+      justify-content: flex-end;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    footer .mono { font-family: var(--mono); color: var(--accent); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      nav { padding: 0 1.25rem; }
+      main { padding: 2rem 1.25rem 3rem; }
+      .scramble-text { font-size: 1rem; padding: 0.85rem 1rem; }
+      .cube-container { width: 280px; height: 210px; }
+      .leaderboard-table { font-size: 0.8rem; }
+      .leaderboard-table thead th { padding: 0.5rem; }
+      .leaderboard-table tbody td { padding: 0.55rem 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-logo" href="index.html">Jacob <span>Morsch</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="#timer">Timer</a></li>
+      <li><a href="#leaderboard">Leaderboard</a></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <!-- Scramble -->
+    <section class="scramble-section">
+      <div class="section-tag">scramble</div>
+      <div class="scramble-text loading" id="scramble-text">Generating scramble...</div>
+      <button class="btn" id="btn-new-scramble">New Scramble</button>
+    </section>
+
+    <!-- Cube Visualization -->
+    <section class="cube-section">
+      <div class="cube-container" id="cube-container"></div>
+    </section>
+
+    <!-- Timer -->
+    <section class="timer-section" id="timer">
+      <div class="timer-display" id="timer-display">0.000</div>
+      <div class="timer-hint" id="timer-hint">
+        Hold <kbd>space</kbd> then release to start
+      </div>
+    </section>
+
+    <!-- Save Form -->
+    <section class="save-section" id="save-section">
+      <div class="save-time-display" id="save-time-display"></div>
+      <div class="save-row">
+        <input type="text" class="save-input" id="save-name" placeholder="Your name" autocomplete="off" spellcheck="false" />
+        <button class="btn" id="btn-save">Save</button>
+        <button class="btn-ghost" id="btn-discard">Discard</button>
+      </div>
+    </section>
+
+    <!-- Top 10 Leaderboard -->
+    <section class="leaderboard-section" id="leaderboard">
+      <div class="section-tag">leaderboard</div>
+      <h2>Top 10</h2>
+      <div id="leaderboard-content"></div>
+    </section>
+
+    <!-- Recent Solves -->
+    <section class="leaderboard-section" id="recent">
+      <div class="section-tag">recent</div>
+      <h2>Recent Solves</h2>
+      <div id="recent-content"></div>
+      <div class="leaderboard-actions" id="leaderboard-actions" style="display:none;">
+        <button class="btn-ghost" id="btn-clear-all">Clear All</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    Built with <span class="mono">&lt;/&gt;</span> &nbsp;&middot;&nbsp; Jacob Morsch &nbsp;&middot;&nbsp; Chicago, IL
+  </footer>
+
+  <script type="module">
+    // ── Dynamic import of cubing.js (won't kill the page if CDN is down) ──
+    let _randomScrambleForEvent = null;
+    let _cubingTwistyLoaded = false;
+
+    async function loadCubing() {
+      if (_randomScrambleForEvent) return true;
+      try {
+        const scrambleMod = await import("https://esm.sh/cubing/scramble");
+        _randomScrambleForEvent = scrambleMod.randomScrambleForEvent;
+        await import("https://esm.sh/cubing/twisty");
+        _cubingTwistyLoaded = true;
+        return true;
+      } catch (err) {
+        console.warn("cubing.js failed to load:", err);
+        return false;
+      }
+    }
+
+    // ── DOM refs ──
+    const scrambleTextEl = document.getElementById("scramble-text");
+    const cubeContainer = document.getElementById("cube-container");
+    const timerDisplay = document.getElementById("timer-display");
+    const timerHint = document.getElementById("timer-hint");
+    const saveSection = document.getElementById("save-section");
+    const saveTimeDisplay = document.getElementById("save-time-display");
+    const saveNameInput = document.getElementById("save-name");
+    const leaderboardContent = document.getElementById("leaderboard-content");
+    const leaderboardActions = document.getElementById("leaderboard-actions");
+
+    // ── State ──
+    let currentScramble = "";
+    let timerState = "idle"; // idle | holding | ready | running | stopped
+    let startTime = 0;
+    let elapsed = 0;
+    let holdTimeout = null;
+    let animFrame = null;
+    const HOLD_DELAY = 300;
+
+    // ────────────────────────────────
+    //  Scramble Generation
+    // ────────────────────────────────
+    async function generateScramble() {
+      scrambleTextEl.textContent = "Generating...";
+      scrambleTextEl.classList.add("loading");
+
+      const loaded = await loadCubing();
+
+      if (loaded && _randomScrambleForEvent) {
+        try {
+          const scramble = await _randomScrambleForEvent("333");
+          currentScramble = scramble.toString();
+        } catch (err) {
+          console.warn("Scramble generation failed, using fallback:", err);
+          currentScramble = fallbackScramble();
+        }
+      } else {
+        currentScramble = fallbackScramble();
+      }
+
+      scrambleTextEl.textContent = currentScramble;
+      scrambleTextEl.classList.remove("loading");
+
+      // Render cube visualization (only if twisty-player loaded)
+      cubeContainer.innerHTML = "";
+      if (_cubingTwistyLoaded) {
+        const player = document.createElement("twisty-player");
+        player.setAttribute("puzzle", "3x3x3");
+        player.setAttribute("experimental-setup-alg", currentScramble);
+        player.setAttribute("alg", "");
+        player.setAttribute("visualization", "2D");
+        player.setAttribute("control-panel", "none");
+        player.setAttribute("background", "none");
+        player.setAttribute("hint-facelets", "none");
+        cubeContainer.appendChild(player);
+      }
+    }
+
+    function fallbackScramble() {
+      const faces = ["R", "L", "U", "D", "F", "B"];
+      const mods = ["", "'", "2"];
+      const moves = [];
+      let last = "", lastAxis = "";
+      const axis = { R: "x", L: "x", U: "y", D: "y", F: "z", B: "z" };
+      for (let i = 0; i < 20; i++) {
+        let f;
+        do {
+          f = faces[Math.floor(Math.random() * faces.length)];
+        } while (f === last || (axis[f] === lastAxis && i > 0));
+        lastAxis = axis[f];
+        last = f;
+        moves.push(f + mods[Math.floor(Math.random() * mods.length)]);
+      }
+      return moves.join(" ");
+    }
+
+    // ────────────────────────────────
+    //  Timer
+    // ────────────────────────────────
+    function formatTime(ms) {
+      const total = ms / 1000;
+      const min = Math.floor(total / 60);
+      const sec = total % 60;
+      if (min > 0) return min + ":" + sec.toFixed(3).padStart(6, "0");
+      return sec.toFixed(3);
+    }
+
+    function tick() {
+      if (timerState !== "running") return;
+      elapsed = performance.now() - startTime;
+      timerDisplay.textContent = formatTime(elapsed);
+      animFrame = requestAnimationFrame(tick);
+    }
+
+    function resetTimer() {
+      timerState = "idle";
+      elapsed = 0;
+      timerDisplay.textContent = "0.000";
+      timerDisplay.className = "timer-display";
+      timerHint.innerHTML = 'Hold <kbd>space</kbd> then release to start';
+      saveSection.classList.remove("visible");
+    }
+
+    function beginHold() {
+      if (timerState === "stopped") saveSection.classList.remove("visible");
+      timerState = "holding";
+      timerDisplay.className = "timer-display holding";
+      timerDisplay.textContent = "0.000";
+      timerHint.textContent = "Keep holding...";
+
+      holdTimeout = setTimeout(() => {
+        if (timerState === "holding") {
+          timerState = "ready";
+          timerDisplay.className = "timer-display ready";
+          timerHint.textContent = "Release to start!";
+        }
+      }, HOLD_DELAY);
+    }
+
+    function cancelHold() {
+      clearTimeout(holdTimeout);
+      timerState = "idle";
+      timerDisplay.className = "timer-display";
+      timerDisplay.textContent = "0.000";
+      timerHint.innerHTML = 'Hold <kbd>space</kbd> then release to start';
+    }
+
+    function startTimer() {
+      timerState = "running";
+      timerDisplay.className = "timer-display";
+      timerHint.innerHTML = 'Tap <kbd>space</kbd> to stop';
+      startTime = performance.now();
+      tick();
+    }
+
+    function stopTimer() {
+      timerState = "stopped";
+      elapsed = performance.now() - startTime;
+      cancelAnimationFrame(animFrame);
+      timerDisplay.textContent = formatTime(elapsed);
+      timerDisplay.className = "timer-display";
+      timerHint.textContent = "Save your time or start a new solve";
+
+      saveTimeDisplay.textContent = formatTime(elapsed);
+      saveSection.classList.add("visible");
+
+      const lastName = localStorage.getItem("cubeTimerLastName") || "";
+      saveNameInput.value = lastName;
+      setTimeout(() => saveNameInput.focus(), 100);
+    }
+
+    // ── Keyboard ──
+    document.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      if (e.code !== "Space") return;
+      e.preventDefault();
+      if (e.repeat) return;
+
+      if (timerState === "idle" || timerState === "stopped") {
+        beginHold();
+      } else if (timerState === "running") {
+        stopTimer();
+      }
+    });
+
+    document.addEventListener("keyup", (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      if (e.code !== "Space") return;
+      e.preventDefault();
+
+      if (timerState === "holding") {
+        cancelHold();
+      } else if (timerState === "ready") {
+        startTimer();
+      }
+    });
+
+    // ── Pointer (mobile + mouse click on timer) ──
+    let pointerActive = false;
+
+    timerDisplay.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      pointerActive = true;
+
+      if (timerState === "idle" || timerState === "stopped") {
+        beginHold();
+      } else if (timerState === "running") {
+        stopTimer();
+      }
+    });
+
+    timerDisplay.addEventListener("pointerup", (e) => {
+      if (!pointerActive) return;
+      pointerActive = false;
+      e.preventDefault();
+
+      if (timerState === "holding") {
+        cancelHold();
+      } else if (timerState === "ready") {
+        startTimer();
+      }
+    });
+
+    timerDisplay.addEventListener("pointerleave", () => {
+      if (pointerActive && timerState === "holding") {
+        pointerActive = false;
+        cancelHold();
+      }
+    });
+
+    // ── Escape to discard ──
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && timerState === "stopped") {
+        discardTime();
+      }
+    });
+
+    // ────────────────────────────────
+    //  Leaderboard
+    // ────────────────────────────────
+    function getLeaderboard() {
+      try { return JSON.parse(localStorage.getItem("cubeTimerLeaderboard") || "[]"); }
+      catch { return []; }
+    }
+
+    function saveLeaderboard(entries) {
+      localStorage.setItem("cubeTimerLeaderboard", JSON.stringify(entries));
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function buildTable(entries, showRank) {
+      let html = '<table class="leaderboard-table"><thead><tr>';
+      html += "<th>" + (showRank ? "#" : "") + "</th><th>Name</th><th>Time</th><th>Scramble</th><th>Date</th><th></th>";
+      html += "</tr></thead><tbody>";
+
+      entries.forEach((entry, i) => {
+        html += `<tr>
+          <td class="lb-rank">${showRank ? i + 1 : ""}</td>
+          <td>${escapeHtml(entry.name)}</td>
+          <td class="lb-time">${escapeHtml(entry.timeStr)}</td>
+          <td class="lb-scramble" title="${escapeHtml(entry.scramble)}">${escapeHtml(entry.scramble)}</td>
+          <td class="lb-date">${escapeHtml(entry.date)}</td>
+          <td><button class="lb-delete" data-id="${escapeHtml(entry.id)}" title="Delete">&times;</button></td>
+        </tr>`;
+      });
+
+      html += "</tbody></table>";
+      return html;
+    }
+
+    const recentContent = document.getElementById("recent-content");
+
+    function renderLeaderboard() {
+      const all = getLeaderboard();
+
+      // ── Top 10 (sorted by fastest time) ──
+      if (all.length === 0) {
+        leaderboardContent.innerHTML = '<div class="leaderboard-empty">No times saved yet. Complete a solve to get started!</div>';
+      } else {
+        const top10 = [...all].sort((a, b) => a.time - b.time).slice(0, 10);
+        leaderboardContent.innerHTML = buildTable(top10, true);
+      }
+
+      // ── Recent 10 (most recent first, chronological by save order) ──
+      if (all.length === 0) {
+        recentContent.innerHTML = '<div class="leaderboard-empty">No recent solves.</div>';
+        leaderboardActions.style.display = "none";
+      } else {
+        const recent10 = [...all].reverse().slice(0, 10);
+        recentContent.innerHTML = buildTable(recent10, false);
+        leaderboardActions.style.display = "flex";
+      }
+
+      // ── Delete handlers for both tables ──
+      document.querySelectorAll(".lb-delete").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (!confirm("Delete this time?")) return;
+          const updated = getLeaderboard().filter(e => e.id !== btn.dataset.id);
+          saveLeaderboard(updated);
+          renderLeaderboard();
+        });
+      });
+    }
+
+    // ── Save / Discard ──
+    function saveTime() {
+      const name = saveNameInput.value.trim() || "Anonymous";
+      localStorage.setItem("cubeTimerLastName", name);
+
+      const entry = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name,
+        time: elapsed,
+        timeStr: formatTime(elapsed),
+        scramble: currentScramble,
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      };
+
+      const entries = getLeaderboard();
+      entries.push(entry);
+      saveLeaderboard(entries);
+      renderLeaderboard();
+
+      saveSection.classList.remove("visible");
+      resetTimer();
+      generateScramble();
+    }
+
+    function discardTime() {
+      saveSection.classList.remove("visible");
+      resetTimer();
+    }
+
+    // ── Button listeners ──
+    document.getElementById("btn-new-scramble").addEventListener("click", () => {
+      generateScramble();
+      resetTimer();
+    });
+
+    document.getElementById("btn-save").addEventListener("click", saveTime);
+    document.getElementById("btn-discard").addEventListener("click", discardTime);
+
+    saveNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") saveTime();
+    });
+
+    document.getElementById("btn-clear-all").addEventListener("click", () => {
+      if (confirm("Clear all saved times?")) {
+        saveLeaderboard([]);
+        renderLeaderboard();
+      }
+    });
+
+    // ── Init ──
+    renderLeaderboard();
+    generateScramble();
+  </script>
+
+</body>
+</html>

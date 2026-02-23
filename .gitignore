@@ -1,0 +1,7 @@
+# Ignore everything
+*
+
+# Allow only the website files
+!index.html
+!cube.html
+!.gitignore
