@@ -252,6 +252,45 @@
     }
     .save-input::placeholder { color: var(--muted); opacity: 0.6; }
 
+    /* ── Stats ── */
+    .stats-section {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.5rem;
+      text-align: center;
+      flex: 1;
+      min-width: 120px;
+      max-width: 200px;
+    }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stat-value.empty { color: var(--muted); font-size: 0.9rem; font-weight: 500; }
+
     /* ── Leaderboard ── */
     .leaderboard-section { margin-top: 2.5rem; }
 
@@ -405,6 +444,25 @@
       <div class="section-tag">leaderboard</div>
       <h2>Top 10</h2>
       <div id="leaderboard-content"></div>
+    </section>
+
+    <!-- Stats -->
+    <section>
+      <div class="section-tag">averages</div>
+      <div class="stats-section">
+        <div class="stat-card">
+          <div class="stat-label">Ao3</div>
+          <div class="stat-value" id="stat-ao3">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ao5</div>
+          <div class="stat-value" id="stat-ao5">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ao10</div>
+          <div class="stat-value" id="stat-ao10">—</div>
+        </div>
+      </div>
     </section>
 
     <!-- Recent Solves -->
@@ -700,6 +758,30 @@
 
     const recentContent = document.getElementById("recent-content");
 
+    // ── Stats ──
+    function calcAverage(times) {
+      if (times.length === 0) return null;
+      const sum = times.reduce((a, b) => a + b, 0);
+      return sum / times.length;
+    }
+
+    function renderStats() {
+      const all = getLeaderboard();
+      const recent = [...all].reverse();
+
+      [3, 5, 10].forEach(n => {
+        const el = document.getElementById("stat-ao" + n);
+        if (recent.length < n) {
+          el.textContent = "—";
+          el.className = "stat-value empty";
+        } else {
+          const avg = calcAverage(recent.slice(0, n).map(e => e.time));
+          el.textContent = formatTime(avg);
+          el.className = "stat-value";
+        }
+      });
+    }
+
     function renderLeaderboard() {
       const all = getLeaderboard();
 
@@ -720,6 +802,8 @@
         recentContent.innerHTML = buildTable(recent10, false);
         leaderboardActions.style.display = "flex";
       }
+
+      renderStats();
 
       // ── Delete handlers for both tables ──
       document.querySelectorAll(".lb-delete").forEach(btn => {
